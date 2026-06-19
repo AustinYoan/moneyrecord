@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>帳簿 · Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Noto+Serif+TC:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/lxgw-wenkai-tc-webfont@1.2.0/style.css" rel="stylesheet">
+<style>
+:root{
+  /* ── 方向c 色票（取自 Claude Design 設計檔）── */
+  --paper-0:#FBF6EA; --paper-1:#F4ECD8; --paper-2:#ECE2C8; --paper-3:#DDD0AE; --paper-tint:#F8F1DD;
+  --ink-0:#1A1612; --ink-1:#3A3225; --ink-2:#6B5F4D; --ink-3:#9A8B72;
+  --forest-900:#14271B; --forest-700:#1F3D2A; --forest-500:#2D5239; --forest-300:#5C7E64; --forest-50:#DDE6D6;
+  --gold-700:#8C6328; --gold-500:#B8893A; --gold-300:#C9A05C; --gold-100:#E4CD9C; --gold-50:#F1E2BD;
+  --rule-strong:#2D5239; --rule-default:#C7B98F; --rule-soft:#E3D8B8;
+  --danger:#9A3B2E;
+  --serif-cn:'LXGW WenKai TC','Noto Serif TC','標楷體',sans-serif;
+  --serif-en:'Quicksand','LXGW WenKai TC',system-ui,sans-serif;
+  --sans:'LXGW WenKai TC',system-ui,-apple-system,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  font-family:var(--serif-cn); color:var(--ink-1);
+  background:var(--paper-1);
+  background-image:
+    radial-gradient(120% 80% at 50% -10%, var(--paper-0), transparent 60%),
+    repeating-linear-gradient(0deg, transparent, transparent 31px, rgba(199,185,143,.18) 31px, rgba(199,185,143,.18) 32px);
+  line-height:1.6; min-height:100vh; padding:24px 16px 64px;
+}
+.wrap{max-width:720px;margin:0 auto}
+
+/* ── 標頭 ── */
+header{text-align:center;padding:18px 0 22px;position:relative}
+.mast-en{font-family:var(--serif-en);font-style:italic;letter-spacing:.14em;color:var(--gold-500);font-size:14px;text-transform:uppercase}
+.mast-cn{font-family:var(--serif-cn);font-weight:600;color:var(--forest-700);font-size:34px;letter-spacing:.22em;margin:2px 0 6px}
+.mast-rule{height:0;border:0;border-top:1.5px solid var(--gold-500);width:74px;margin:6px auto 0;position:relative}
+.mast-rule::after{content:"❦";position:absolute;left:50%;top:-13px;transform:translateX(-50%);background:var(--paper-1);padding:0 8px;color:var(--gold-500);font-size:15px}
+.mast-sub{color:var(--ink-3);font-size:12px;letter-spacing:.05em;margin-top:14px}
+.userbar{display:inline-flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap;justify-content:center}
+.userbar .ub-label{font-family:var(--serif-en);font-style:italic;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--gold-700)}
+.userbar select{
+  appearance:none;cursor:pointer;font-family:var(--serif-cn);font-size:14px;color:var(--forest-700);
+  background:var(--paper-0);border:1px solid var(--rule-default);border-radius:8px;
+  padding:6px 30px 6px 12px;letter-spacing:.04em;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238C6328' stroke-width='1.4' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 11px center;
+}
+.userbar select:focus{outline:0;border-color:var(--gold-500)}
+.userbar .ub-new{
+  appearance:none;cursor:pointer;background:transparent;border:1px solid var(--gold-500);
+  color:var(--gold-700);font-family:var(--serif-cn);font-size:13px;letter-spacing:.06em;
+  padding:6px 12px;border-radius:8px;transition:.15s;
+}
+.userbar .ub-new:hover{background:var(--gold-50)}
+
+/* ── 卡片通用 ── */
+.card{
+  background:var(--paper-0);
+  border:1px solid var(--rule-default);
+  border-radius:14px;
+  box-shadow:0 1px 0 var(--paper-3), 0 10px 30px -18px rgba(26,22,18,.45);
+  padding:22px 20px; margin-bottom:20px;
+}
+.card-label{font-family:var(--serif-en);font-style:italic;font-size:12px;letter-spacing:.12em;color:var(--gold-700);text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:10px}
+.card-label::after{content:"";flex:1;height:0;border-top:1px solid var(--rule-soft)}
+
+/* ── 收支切換 ── */
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1.5px solid var(--rule-default);border-radius:11px;overflow:hidden;margin-bottom:18px}
+.seg button{
+  appearance:none;border:0;background:transparent;cursor:pointer;
+  font-family:var(--serif-cn);font-size:18px;font-weight:500;letter-spacing:.2em;
+  padding:13px 0;color:var(--ink-2);transition:.18s;position:relative;
+}
+.seg button:first-child{border-right:1px solid var(--rule-default)}
+.seg button .en{display:block;font-family:var(--serif-en);font-style:italic;font-size:11px;letter-spacing:.1em;text-transform:uppercase;opacity:.7;margin-top:1px;font-weight:400}
+.seg button[aria-selected="true"][data-type="expense"]{background:var(--forest-700);color:var(--paper-0)}
+.seg button[aria-selected="true"][data-type="income"]{background:var(--gold-500);color:var(--forest-900)}
+
+/* ── 金額 ── */
+.amount-field{position:relative;margin-bottom:16px}
+.amount-field .cur{position:absolute;left:0;top:50%;transform:translateY(-50%);font-family:var(--serif-en);font-size:30px;color:var(--ink-3)}
+.amount-field input{
+  width:100%;border:0;border-bottom:1.5px solid var(--rule-default);background:transparent;
+  font-family:var(--serif-en);font-size:42px;font-weight:500;color:var(--forest-700);
+  padding:6px 6px 6px 30px;letter-spacing:.02em;
+}
+.amount-field input:focus{outline:0;border-bottom-color:var(--gold-500)}
+.amount-field input::placeholder{color:var(--paper-3)}
+
+/* ── 文字輸入 ── */
+.field{margin-bottom:14px}
+.field>label{display:block;font-size:12px;letter-spacing:.08em;color:var(--ink-2);margin-bottom:5px}
+.field input[type=text],.field input[type=date]{
+  width:100%;border:1px solid var(--rule-default);border-radius:9px;background:var(--paper-tint);
+  font-family:var(--serif-cn);font-size:16px;color:var(--ink-0);padding:11px 13px;
+}
+.field input:focus{outline:0;border-color:var(--gold-500);background:var(--paper-0)}
+.row2{display:grid;grid-template-columns:1fr 140px;gap:12px}
+@media(max-width:480px){.row2{grid-template-columns:1fr}}
+
+/* 自動分類晶片 */
+.cat-chip{display:inline-flex;align-items:center;gap:7px;margin-top:9px;font-size:13px;color:var(--ink-2)}
+.cat-chip b{
+  font-weight:500;color:var(--forest-700);background:var(--forest-50);
+  border:1px solid var(--forest-100,#B8C8B5);border-radius:999px;padding:3px 12px;letter-spacing:.05em;
+}
+.cat-chip[data-income] b{color:var(--gold-700);background:var(--gold-50);border-color:var(--gold-100)}
+
+/* ── 主按鈕 ── */
+.btn-primary{
+  width:100%;appearance:none;border:0;cursor:pointer;margin-top:6px;
+  background:var(--forest-700);color:var(--paper-0);
+  font-family:var(--serif-cn);font-size:17px;font-weight:500;letter-spacing:.3em;
+  padding:15px 0;border-radius:11px;transition:.18s;box-shadow:0 8px 20px -12px var(--forest-900);
+}
+.btn-primary:hover{background:var(--forest-900)}
+.btn-primary:active{transform:translateY(1px)}
+.btn-primary:disabled{opacity:.5;cursor:default}
+
+/* ── 動作雙鈕 ── */
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}
+@media(max-width:480px){.actions{grid-template-columns:1fr}}
+.btn-ghost{
+  appearance:none;cursor:pointer;background:var(--paper-0);
+  border:1.5px solid var(--gold-500);color:var(--gold-700);
+  font-family:var(--serif-cn);font-size:15px;font-weight:500;letter-spacing:.16em;
+  padding:14px 0;border-radius:11px;transition:.18s;
+}
+.btn-ghost .en{display:block;font-family:var(--serif-en);font-style:italic;font-size:10px;letter-spacing:.08em;text-transform:uppercase;opacity:.7;font-weight:400;margin-top:1px}
+.btn-ghost:hover{background:var(--gold-50)}
+.btn-ghost[aria-pressed="true"]{background:var(--forest-700);border-color:var(--forest-700);color:var(--paper-0)}
+
+/* ── 摘要列 ── */
+.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:0;text-align:center;margin-bottom:6px}
+.summary>div{padding:6px 4px;border-right:1px solid var(--rule-soft)}
+.summary>div:last-child{border-right:0}
+.summary .k{font-family:var(--serif-en);font-style:italic;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.summary .v{font-family:var(--serif-en);font-size:24px;font-weight:500;color:var(--ink-0);margin-top:2px}
+.summary .v.exp{color:var(--danger)} .summary .v.inc{color:var(--forest-500)} .summary .v.net{color:var(--gold-700)}
+
+/* ── 消費習慣長條 ── */
+.bars{margin-top:18px}
+.bar-row{margin-bottom:13px}
+.bar-head{display:flex;justify-content:space-between;align-items:baseline;font-size:14px;margin-bottom:5px}
+.bar-head .name{color:var(--ink-1);letter-spacing:.04em}
+.bar-head .amt{font-family:var(--serif-en);color:var(--ink-2)}
+.bar-track{height:9px;background:var(--paper-2);border-radius:5px;overflow:hidden}
+.bar-fill{height:100%;border-radius:5px;background:linear-gradient(90deg,var(--forest-500),var(--forest-300));width:0;transition:width .7s cubic-bezier(.2,.7,.2,1)}
+.insight{margin-top:16px;padding-top:14px;border-top:1px solid var(--rule-soft);font-size:14px;color:var(--ink-2);line-height:1.8}
+.insight b{color:var(--forest-700);font-weight:500}
+
+/* ── 帳簿明細 ── */
+.month-head{font-family:var(--serif-en);font-style:italic;color:var(--gold-700);font-size:13px;letter-spacing:.08em;margin:18px 0 8px;display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--rule-default);padding-bottom:5px}
+.month-head .mtot{font-style:normal;color:var(--ink-2)}
+.entry{display:grid;grid-template-columns:46px 1fr auto;gap:10px;align-items:baseline;padding:9px 2px;border-bottom:1px dotted var(--rule-soft)}
+.entry .d{font-family:var(--serif-en);font-size:13px;color:var(--ink-3)}
+.entry .desc{min-width:0}
+.entry .desc .it{color:var(--ink-0);font-size:15px}
+.entry .desc .ct{font-size:11px;color:var(--ink-3);letter-spacing:.06em}
+.entry .num{font-family:var(--serif-en);font-size:16px;white-space:nowrap}
+.entry .num.exp{color:var(--danger)} .entry .num.inc{color:var(--forest-500)}
+.entry{cursor:pointer;border-radius:7px;transition:background .15s}
+.entry:hover{background:var(--paper-tint)}
+.entry .del{appearance:none;border:0;background:transparent;cursor:pointer;color:var(--ink-3);font-size:15px;padding:2px 4px;line-height:1;border-radius:6px;transition:.15s;grid-column:3;justify-self:end}
+.entry .del:hover{color:var(--danger);background:rgba(154,59,46,.08)}
+.entry{grid-template-columns:46px 1fr auto 26px}
+.entry .tap-hint{font-size:10px;color:var(--gold-500);letter-spacing:.06em;opacity:0}
+.entry:hover .tap-hint{opacity:1}
+
+/* 編輯模式橫幅 */
+.editbar{display:none;align-items:center;gap:10px;background:var(--gold-50);border:1px solid var(--gold-100);border-radius:9px;padding:8px 12px;margin-bottom:16px;font-size:13px;color:var(--gold-700)}
+.editbar.on{display:flex}
+.editbar .grow{flex:1;letter-spacing:.04em}
+.editbar b{font-weight:600;color:var(--forest-700)}
+.editbar button{appearance:none;border:1px solid var(--gold-500);background:var(--paper-0);color:var(--gold-700);font-family:var(--serif-cn);font-size:12px;letter-spacing:.08em;padding:5px 12px;border-radius:7px;cursor:pointer}
+.editbar button.del-cur{border-color:var(--danger);color:var(--danger)}
+.editbar button:hover{filter:brightness(.97)}
+
+/* ── 狀態 / 設定 ── */
+.empty{text-align:center;color:var(--ink-3);padding:30px 10px;font-size:14px;letter-spacing:.04em}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);opacity:0;background:var(--forest-900);color:var(--paper-0);padding:11px 22px;border-radius:999px;font-size:14px;letter-spacing:.06em;box-shadow:0 12px 30px -12px #000;transition:.3s;pointer-events:none;z-index:50}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.err{background:var(--danger)}
+.setup{margin-top:6px}
+.setup summary{cursor:pointer;color:var(--ink-3);font-size:12px;letter-spacing:.06em;list-style:none;text-align:center;padding:8px}
+.setup summary::-webkit-details-marker{display:none}
+.setup .panel{margin-top:10px}
+.setup .panel input{width:100%;border:1px solid var(--rule-default);border-radius:8px;background:var(--paper-tint);font-family:var(--serif-en);font-size:13px;padding:9px 11px;color:var(--ink-1)}
+.setup .panel .hint{font-size:11px;color:var(--ink-3);margin-top:7px;line-height:1.7}
+.setup .panel button{margin-top:9px;appearance:none;border:1px solid var(--forest-700);background:var(--paper-0);color:var(--forest-700);font-family:var(--serif-cn);font-size:13px;letter-spacing:.1em;padding:8px 18px;border-radius:8px;cursor:pointer}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ink-3);margin-right:6px;vertical-align:middle}
+.dot.ok{background:var(--forest-500)} .dot.off{background:var(--gold-500)}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="mast-en">Daily Ledger</div>
+    <h1 class="mast-cn">帳　簿</h1>
+    <hr class="mast-rule">
+    <div class="mast-sub"><span class="dot" id="connDot"></span><span id="connText">尚未連接試算表</span></div>
+    <div class="userbar">
+      <span class="ub-label">帳本</span>
+      <select id="userSel" onchange="switchUser(this.value)" aria-label="切換帳本"></select>
+      <button type="button" class="ub-new" onclick="newUser()">＋ 新帳本</button>
+    </div>
+  </header>
+
+  <!-- 記一筆 -->
+  <section class="card">
+    <div class="card-label">記一筆 · New Entry</div>
+
+    <div class="editbar" id="editBar">
+      <span class="grow">編輯中 · <b id="editWhat">這一筆</b></span>
+      <button type="button" class="del-cur" onclick="deleteEntry(editingId)">刪除</button>
+      <button type="button" onclick="cancelEdit()">取消</button>
+    </div>
+
+    <div class="seg" role="tablist" aria-label="收支類型">
+      <button type="button" data-type="expense" aria-selected="true" onclick="setType('expense')">支出<span class="en">Expense</span></button>
+      <button type="button" data-type="income"  aria-selected="false" onclick="setType('income')">收入<span class="en">Income</span></button>
+    </div>
+
+    <div class="amount-field">
+      <span class="cur">$</span>
+      <input id="amount" type="text" inputmode="decimal" placeholder="0" autocomplete="off" oninput="cleanAmount(this)">
+    </div>
+
+    <div class="field">
+      <label for="item">項目</label>
+      <input id="item" type="text" placeholder="例：星巴克拿鐵、捷運、房租" autocomplete="off" oninput="liveCategory()">
+      <span class="cat-chip" id="catChip">自動分類　<b id="catLabel">—</b></span>
+    </div>
+
+    <div class="row2">
+      <div class="field" style="margin-bottom:0">
+        <label for="note">備註（選填）</label>
+        <input id="note" type="text" placeholder="付款方式、對象…" autocomplete="off">
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label for="date">日期</label>
+        <input id="date" type="date">
+      </div>
+    </div>
+
+    <button class="btn-primary" id="saveBtn" onclick="saveEntry()">記　上　帳　簿</button>
+  </section>
+
+  <!-- 動作 -->
+  <div class="actions">
+    <button class="btn-ghost" id="btnHabit"  aria-pressed="false" onclick="showView('habit')">生成消費習慣<span class="en">Spending Habits</span></button>
+    <button class="btn-ghost" id="btnRecord" aria-pressed="false" onclick="showView('record')">生成消費紀錄<span class="en">Account Records</span></button>
+  </div>
+
+  <!-- 輸出 -->
+  <section class="card" id="output" hidden></section>
+
+  <!-- 設定 -->
+  <details class="setup card" style="padding:0;background:transparent;border:0;box-shadow:none">
+    <summary>⚙ 連接設定 / Apps Script 網址</summary>
+    <div class="panel card">
+      <div class="field" style="margin-bottom:8px">
+        <label for="apiUrl">Google Apps Script Web App 網址（.../exec）</label>
+        <input id="apiUrl" type="text" placeholder="https://script.google.com/macros/s/XXXX/exec" autocomplete="off">
+      </div>
+      <button onclick="saveConfig()">儲存並測試連線</button>
+      <p class="hint">設定步驟見隨附的 <b>Code.gs 安裝說明</b>。網址只存在你這台裝置（localStorage），不會外流。未連線時資料會先存在本機，連上後再記一筆即同步。</p>
+    </div>
+  </details>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   設定
+   ============================================================ */
+const LS_URL='ledger_api_url', LS_CACHE='ledger_cache_v1', LS_PENDING_DEL='ledger_pending_del_v1', LS_USER='ledger_user';
+const DEFAULT_USER='記帳';   // 對應後端預設頁籤，舊資料沿用這個名字
+let API_URL = localStorage.getItem(LS_URL) || '';
+let currentType='expense';
+let editingId=null;
+// 目前使用者（＝試算表頁籤名稱）。每個使用者各有獨立的本機快取與待同步佇列。
+let currentUser = localStorage.getItem(LS_USER) || DEFAULT_USER;
+let records=[], pendingDel=[];
+let flushing=false;
+
+// 依使用者切出獨立的 localStorage key
+function cacheKey(){ return LS_CACHE+'__'+currentUser; }
+function pdKey(){ return LS_PENDING_DEL+'__'+currentUser; }
+function loadUserData(){
+  records = JSON.parse(localStorage.getItem(cacheKey()) || '[]');
+  pendingDel = JSON.parse(localStorage.getItem(pdKey()) || '[]');
+}
+function saveCache(){ localStorage.setItem(cacheKey(), JSON.stringify(records)); }
+function savePD(){ localStorage.setItem(pdKey(), JSON.stringify(pendingDel)); }
+function pendingCount(){ return records.filter(r=>r._pending).length + pendingDel.length; }
+// 只取會寫進試算表的欄位，濾掉 _pending 等本機旗標
+function payload(e){ return { id:e.id, date:e.date, type:e.type, item:e.item, category:e.category, amount:e.amount, note:e.note }; }
+function post(body){
+  // 每筆讀寫都帶上 user，後端據此操作對應頁籤
+  return fetch(API_URL,{ method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify({ user:currentUser, ...body }) });
+}
+
+/* ── 分類字典：項目關鍵字 → 分類。可自由增刪 ── */
+const RULES_EXPENSE = [
+  ['餐飲', ['早餐','午餐','晚餐','宵夜','咖啡','拿鐵','星巴克','路易莎','cama','飲料','手搖','便當','麥當勞','肯德基','摩斯','subway','麵','飯','火鍋','燒肉','餐廳','小吃','超商','7-11','711','全家','萊爾富','ok','豆漿','茶','水餃','滷味','鹽酥雞','披薩','pizza','早午餐','brunch','甜點','蛋糕','麵包','吃']],
+  ['交通', ['捷運','公車','客運','計程車','小黃','uber','加油','汽油','柴油','停車','高鐵','台鐵','火車','悠遊卡','一卡通','機票','etc','過路費','輪胎','機車','油錢','ubike','youbike','油']],
+  ['居家', ['房租','水費','電費','瓦斯','網路','電話','手機費','管理費','日用品','衛生紙','清潔','家具','ikea','寢具','家電','維修','水電']],
+  ['購物', ['蝦皮','momo','pchome','淘寶','衣服','褲','鞋','包','3c','手機','耳機','電腦','書','文具','網購','服飾','美妝','保養','化妝']],
+  ['娛樂', ['電影','遊戲','steam','訂閱','netflix','spotify','disney','youtube','旅遊','住宿','飯店','門票','ktv','健身','運動','演唱會','展覽']],
+  ['醫療', ['醫院','診所','藥','藥局','健保','看牙','牙醫','掛號','眼科','中醫','保健']],
+  ['教育', ['學費','補習','課程','線上課','證照','書籍','教材','研習']],
+  ['人情', ['紅包','禮物','禮金','捐款','奠儀','婚禮','聚餐分攤']],
+];
+const RULES_INCOME = [
+  ['薪資', ['薪水','薪資','月薪','工資','加班費','年終','獎金','分紅','bonus']],
+  ['業外', ['接案','外包','顧問','演講','稿費','版稅','利息','股息','配息','退款','發票','中獎','二手','賣']],
+];
+function categorize(item, type){
+  const t=(item||'').toLowerCase();
+  const rules = type==='income'?RULES_INCOME:RULES_EXPENSE;
+  for(const [cat,keys] of rules){ for(const k of keys){ if(t.includes(k.toLowerCase())) return cat; } }
+  return type==='income'?'其他收入':'其他';
+}
+
+/* ============================================================
+   UI 行為
+   ============================================================ */
+function setType(t){
+  currentType=t;
+  document.querySelectorAll('.seg button').forEach(b=>b.setAttribute('aria-selected', b.dataset.type===t));
+  liveCategory();
+}
+function cleanAmount(el){ el.value = el.value.replace(/[^\d.]/g,'').replace(/(\..*)\./g,'$1'); }
+function liveCategory(){
+  const item=document.getElementById('item').value.trim();
+  const chip=document.getElementById('catChip');
+  const cat = item ? categorize(item,currentType) : '—';
+  document.getElementById('catLabel').textContent = cat;
+  chip.toggleAttribute('data-income', currentType==='income');
+}
+function fmt(n){ return (Math.round(n*100)/100).toLocaleString('en-US'); }
+function toast(msg,err){
+  const t=document.getElementById('toast'); t.textContent=msg;
+  t.className='toast show'+(err?' err':''); setTimeout(()=>t.className='toast',2200);
+}
+function setConn(){
+  const dot=document.getElementById('connDot'), txt=document.getElementById('connText');
+  const p=pendingCount();
+  if(API_URL){ dot.className='dot ok'; txt.textContent = p ? `已連接 · ${p} 筆待同步` : '已連接 Google 試算表'; }
+  else { dot.className='dot off'; txt.textContent = p ? `離線模式 · ${p} 筆暫存本機` : '離線模式（資料暫存本機）'; }
+}
+
+/* ============================================================
+   資料：讀 / 寫 Google Sheet（Apps Script）
+   ============================================================ */
+async function saveConfig(){
+  const url=document.getElementById('apiUrl').value.trim();
+  if(!/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec$/.test(url)){
+    toast('網址格式需以 /exec 結尾',true); return;
+  }
+  API_URL=url; localStorage.setItem(LS_URL,url); setConn();
+  toast('連線中…');
+  try{ await pullRecords(); await flushPending(); await refreshUsers(); toast('連線成功，已同步'); }
+  catch(e){ toast('已儲存，但讀取失敗，請檢查部署權限',true); }
+}
+async function pullRecords(){
+  if(!API_URL) return;
+  const res=await fetch(API_URL+'?user='+encodeURIComponent(currentUser),{method:'GET'});
+  const data=await res.json();
+  if(data && data.ok && Array.isArray(data.rows)){
+    const server = data.rows.filter(r=>r.amount);
+    // 用 id 合併，而不是整碗覆蓋：本機尚未同步的（_pending）優先，已排隊刪除的不要拉回來
+    const pendingLocal = records.filter(r=>r._pending);
+    const pendingIds = new Set(pendingLocal.map(r=>r.id));
+    const delSet = new Set(pendingDel);
+    const merged = server.filter(r=>!delSet.has(r.id) && !pendingIds.has(r.id));
+    records = merged.concat(pendingLocal);
+    saveCache(); setConn(); refreshIfOpen();
+  }
+}
+// 連上線後，把本機累積的新增/更新/刪除補送到雲端
+async function flushPending(){
+  if(!API_URL || flushing) return;
+  flushing=true;
+  try{
+    for(const id of [...pendingDel]){
+      try{ await post({action:'delete',id}); pendingDel=pendingDel.filter(x=>x!==id); savePD(); }
+      catch(e){ break; }   // 仍離線就先停，下次再試
+    }
+    for(const r of records.filter(x=>x._pending)){
+      try{
+        await post(r._pending==='update' ? {action:'update',...payload(r)} : payload(r));
+        delete r._pending; saveCache();
+      } catch(e){ break; }
+    }
+    setConn();
+  } finally { flushing=false; }
+}
+
+/* ============================================================
+   使用者（＝頁籤）切換
+   ============================================================ */
+// 本機曾用過的使用者（從 localStorage 的快取 key 推回名單）
+function localUsers(){
+  const out=[];
+  for(let i=0;i<localStorage.length;i++){
+    const k=localStorage.key(i);
+    if(k && k.startsWith(LS_CACHE+'__')) out.push(k.slice((LS_CACHE+'__').length));
+  }
+  return out;
+}
+function renderUserSelect(names){
+  const sel=document.getElementById('userSel');
+  const set=new Set([currentUser, ...names]);     // 確保目前使用者一定在清單裡
+  sel.innerHTML='';
+  [...set].forEach(n=>{
+    const o=document.createElement('option');
+    o.value=n; o.textContent=n; if(n===currentUser) o.selected=true;
+    sel.appendChild(o);
+  });
+}
+// 連線時向後端要現有頁籤清單；離線就用本機名單
+async function refreshUsers(){
+  let names=localUsers();
+  if(API_URL){
+    try{
+      const res=await fetch(API_URL+'?list=users',{method:'GET'});
+      const data=await res.json();
+      if(data && data.ok && Array.isArray(data.users)) names=data.users;
+    }catch(e){/* 離線就用本機名單 */}
+  }
+  renderUserSelect(names);
+}
+async function switchUser(name){
+  name=(name||'').trim(); if(!name || name===currentUser){ return; }
+  currentUser=name; localStorage.setItem(LS_USER,name);
+  loadUserData();                 // 換成這位使用者的本機快取
+  cancelEdit();
+  setConn(); renderUserSelect(localUsers());
+  refreshIfOpen();
+  if(API_URL){ try{ await pullRecords(); await flushPending(); }catch(e){} }
+  toast('已切換到「'+name+'」');
+}
+function newUser(){
+  const name=prompt('新帳本名稱（會在試算表建立一個同名頁籤）：','');
+  if(name===null) return;
+  const n=name.trim();
+  if(!n){ toast('名稱不可空白',true); return; }
+  if(/[:\\\/\?\*\[\]]/.test(n)){ toast('名稱不可含 : \\ / ? * [ ]',true); return; }
+  if(n.length>50){ toast('名稱太長',true); return; }
+  switchUser(n);   // 切過去；第一次讀寫時後端會自動複製 SAMPLE 建立頁籤
+}
+
+async function saveEntry(){
+  const amount=parseFloat(document.getElementById('amount').value);
+  const item=document.getElementById('item').value.trim();
+  const note=document.getElementById('note').value.trim();
+  const date=document.getElementById('date').value || todayStr();
+  if(!amount || amount<=0){ toast('請輸入金額',true); return; }
+  if(!item){ toast('請輸入項目',true); return; }
+
+  const btn=document.getElementById('saveBtn'); btn.disabled=true;
+
+  if(editingId){
+    // ── 更新既有那一筆 ──
+    btn.textContent='更新中…';
+    const idx=records.findIndex(r=>r.id===editingId);
+    // 若這筆原本就還沒同步成功（仍是 create），更新後仍當 create 送，避免在雲端找不到列
+    const stillNew = idx>=0 && records[idx]._pending==='create';
+    const entry={ id:editingId, date, type:currentType, item, category:categorize(item,currentType), amount, note, _pending: stillNew?'create':'update' };
+    if(idx>=0) records[idx]=entry; else records.push(entry);
+    saveCache();
+    if(API_URL){
+      try{
+        await post(stillNew ? payload(entry) : {action:'update',...payload(entry)});
+        delete entry._pending; saveCache(); toast('已更新 ✓');
+      }catch(e){ toast('已改本機，稍後自動同步',true); }
+    } else { toast('已更新本機（尚未連線）'); }
+    cancelEdit();
+  } else {
+    // ── 新增一筆 ──
+    btn.textContent='記帳中…';
+    const entry={ id:genId(), date, type:currentType, item, category:categorize(item,currentType), amount, note, _pending:'create' };
+    records.push(entry);
+    saveCache();
+    if(API_URL){
+      try{
+        await post(payload(entry));
+        delete entry._pending; saveCache(); toast('已寫入試算表 ✓');
+      }catch(e){ toast('已存本機，稍後自動同步',true); }
+    } else { toast('已存本機（尚未連線）'); }
+    clearForm();
+  }
+
+  btn.disabled=false; btn.textContent='記　上　帳　簿';
+  setConn(); liveCategory();
+  refreshIfOpen();
+  if(API_URL) flushPending();   // 順手把先前沒送成功的一起補送
+}
+function genId(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function clearForm(){
+  document.getElementById('amount').value='';
+  document.getElementById('item').value='';
+  document.getElementById('note').value='';
+}
+function editEntry(id){
+  const r=records.find(x=>x.id===id); if(!r) return;
+  editingId=id;
+  setType(r.type);
+  document.getElementById('amount').value=r.amount;
+  document.getElementById('item').value=r.item;
+  document.getElementById('note').value=r.note||'';
+  document.getElementById('date').value=r.date||todayStr();
+  document.getElementById('editWhat').textContent=`${r.date.slice(5)} ${r.item}`;
+  document.getElementById('editBar').classList.add('on');
+  document.getElementById('saveBtn').textContent='更　新　這　筆';
+  liveCategory();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function cancelEdit(){
+  editingId=null;
+  document.getElementById('editBar').classList.remove('on');
+  document.getElementById('saveBtn').textContent='記　上　帳　簿';
+  clearForm(); liveCategory();
+}
+async function deleteEntry(id){
+  if(!id) return;
+  const r=records.find(x=>x.id===id);
+  if(!confirm(`確定刪除「${r?r.item:''}」這一筆？`)) return;
+  // 這筆若從沒同步上去（仍是 create），直接本機刪掉即可，雲端沒有它
+  const neverSynced = r && r._pending==='create';
+  records=records.filter(x=>x.id!==id);
+  saveCache();
+  if(neverSynced){
+    toast('已從本機刪除');
+  } else {
+    if(!pendingDel.includes(id)){ pendingDel.push(id); savePD(); }   // 記下來，連上後補送刪除
+    if(API_URL){
+      try{
+        await post({action:'delete',id});
+        pendingDel=pendingDel.filter(x=>x!==id); savePD(); toast('已刪除 ✓');
+      }catch(e){ toast('已刪本機，稍後自動同步',true); }
+    } else { toast('已刪本機（尚未連線）'); }
+  }
+  if(editingId===id) cancelEdit();
+  setConn(); refreshIfOpen();
+}
+function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+
+/* ============================================================
+   輸出視圖
+   ============================================================ */
+let activeView=null;
+function showView(v){
+  activeView = (activeView===v)?null:v;
+  document.getElementById('btnHabit').setAttribute('aria-pressed', activeView==='habit');
+  document.getElementById('btnRecord').setAttribute('aria-pressed', activeView==='record');
+  const out=document.getElementById('output');
+  if(!activeView){ out.hidden=true; return; }
+  out.hidden=false;
+  if(activeView==='habit') renderHabit(out); else renderRecord(out);
+  out.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function refreshIfOpen(){ if(activeView) showView(activeView), document.getElementById('btn'+(activeView==='habit'?'Habit':'Record')).setAttribute('aria-pressed','true'); }
+
+function totals(){
+  let exp=0, inc=0;
+  records.forEach(r=> r.type==='income'? inc+=+r.amount : exp+=+r.amount);
+  return {exp,inc,net:inc-exp};
+}
+
+function renderHabit(out){
+  if(!records.length){ out.innerHTML=emptyHTML(); return; }
+  const {exp,inc,net}=totals();
+  // 支出分類彙總
+  const byCat={};
+  records.filter(r=>r.type==='expense').forEach(r=>{ byCat[r.category]=(byCat[r.category]||0)+(+r.amount); });
+  const cats=Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
+  const max=cats.length?cats[0][1]:1;
+  const top=cats[0];
+
+  let bars=cats.map(([c,v])=>`
+    <div class="bar-row">
+      <div class="bar-head"><span class="name">${c}</span><span class="amt">$${fmt(v)}　<span style="color:var(--ink-3)">${Math.round(v/exp*100)||0}%</span></span></div>
+      <div class="bar-track"><div class="bar-fill" data-w="${Math.max(4,v/max*100)}"></div></div>
+    </div>`).join('');
+
+  out.innerHTML=`
+    <div class="card-label">消費習慣 · Spending Habits</div>
+    <div class="summary">
+      <div><div class="k">支出 Out</div><div class="v exp">$${fmt(exp)}</div></div>
+      <div><div class="k">收入 In</div><div class="v inc">$${fmt(inc)}</div></div>
+      <div><div class="k">結餘 Net</div><div class="v net">${net<0?'-$'+fmt(-net):'$'+fmt(net)}</div></div>
+    </div>
+    <div class="bars">${bars||'<p class="empty">尚無支出資料</p>'}</div>
+    ${top?`<div class="insight">最大支出類別是 <b>${top[0]}</b>，共 <b>$${fmt(top[1])}</b>，佔總支出的 <b>${Math.round(top[1]/exp*100)}%</b>。${net<0?'本期支出大於收入，注意收支平衡。':'本期維持結餘，狀態良好。'}　共 <b>${records.length}</b> 筆紀錄。</div>`:''}
+  `;
+  // 從 0 寬度（CSS 預設）在下一幀補上目標寬度，才會重播 transition 動畫
+  requestAnimationFrame(()=>out.querySelectorAll('.bar-fill').forEach(b=>b.style.width=b.dataset.w+'%'));
+}
+
+function renderRecord(out){
+  if(!records.length){ out.innerHTML=emptyHTML(); return; }
+  const sorted=[...records].sort((a,b)=> (b.date>a.date?1:b.date<a.date?-1:0));
+  const groups={};
+  sorted.forEach(r=>{ const m=(r.date||'').slice(0,7); (groups[m]=groups[m]||[]).push(r); });
+
+  let html=`<div class="card-label">消費紀錄 · Account Records</div>`;
+  for(const m of Object.keys(groups)){
+    const rows=groups[m];
+    let mExp=0,mInc=0;
+    rows.forEach(r=> r.type==='income'? mInc+=+r.amount : mExp+=+r.amount);
+    html+=`<div class="month-head"><span>${m||'未標日期'}</span><span class="mtot">支出 $${fmt(mExp)}　·　收入 $${fmt(mInc)}</span></div>`;
+    html+=rows.map(r=>{
+      const inc=r.type==='income';
+      const d=(r.date||'').slice(5).replace('-','/');
+      return `<div class="entry" onclick="editEntry('${r.id}')">
+        <span class="d">${d}</span>
+        <span class="desc"><div class="it">${escapeHTML(r.item)} <span class="tap-hint">點我編輯</span></div><div class="ct">${r.category}${r.note?' · '+escapeHTML(r.note):''}</div></span>
+        <span class="num ${inc?'inc':'exp'}">${inc?'+':'−'}$${fmt(r.amount)}</span>
+        <button class="del" title="刪除" onclick="event.stopPropagation();deleteEntry('${r.id}')">✕</button>
+      </div>`;
+    }).join('');
+  }
+  out.innerHTML=html;
+}
+function emptyHTML(){ return `<div class="card-label">尚無資料</div><p class="empty">記下第一筆，這裡就會長出你的帳簿。</p>`; }
+function escapeHTML(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+/* ============================================================
+   啟動
+   ============================================================ */
+(function init(){
+  document.getElementById('date').value=todayStr();
+  document.getElementById('apiUrl').value=API_URL;
+  // 舊版單一帳本的快取（無使用者後綴）→ 搬到預設使用者底下，避免資料看似消失
+  const legacy=localStorage.getItem(LS_CACHE);
+  if(legacy && !localStorage.getItem(LS_CACHE+'__'+DEFAULT_USER)){
+    localStorage.setItem(LS_CACHE+'__'+DEFAULT_USER, legacy);
+    localStorage.removeItem(LS_CACHE);
+    const legacyPD=localStorage.getItem(LS_PENDING_DEL);
+    if(legacyPD){ localStorage.setItem(LS_PENDING_DEL+'__'+DEFAULT_USER, legacyPD); localStorage.removeItem(LS_PENDING_DEL); }
+  }
+  loadUserData();
+  // 為升級前沒有編號的舊紀錄補上編號
+  let changed=false;
+  records.forEach(r=>{ if(!r.id){ r.id=genId(); changed=true; } });
+  if(changed) saveCache();
+  renderUserSelect(localUsers());
+  setConn(); liveCategory();
+  if(API_URL) pullRecords().then(flushPending).then(refreshUsers).catch(()=>{});
+})();
+</script>
+</body>
+</html>
