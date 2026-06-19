@@ -195,6 +195,20 @@ header{text-align:center;padding:18px 0 22px;position:relative}
 .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ink-3);margin-right:6px;vertical-align:middle}
 .dot.ok{background:var(--forest-500)} .dot.off{background:var(--gold-500)}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* ── 名字登入 ── */
+.gate{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;padding:24px;
+  background:var(--paper-1);background-image:radial-gradient(120% 80% at 50% -10%, var(--paper-0), transparent 60%)}
+.gate[hidden]{display:none}
+.gate-card{width:100%;max-width:360px;text-align:center;background:var(--paper-0);
+  border:1px solid var(--rule-default);border-radius:16px;padding:34px 26px;
+  box-shadow:0 1px 0 var(--paper-3),0 18px 50px -24px rgba(26,22,18,.5)}
+.gate-title{font-family:var(--serif-cn);font-weight:500;color:var(--forest-700);font-size:24px;letter-spacing:.18em;margin:6px 0 18px}
+.gate input{width:100%;border:1px solid var(--rule-default);border-radius:10px;background:var(--paper-tint);
+  font-family:var(--serif-cn);font-size:20px;text-align:center;color:var(--ink-0);padding:13px;letter-spacing:.1em}
+.gate input:focus{outline:0;border-color:var(--gold-500);background:var(--paper-0)}
+.gate-err{min-height:20px;color:var(--danger);font-size:13px;margin:10px 0 4px;letter-spacing:.04em}
+.ub-name{font-family:var(--serif-cn);font-size:15px;color:var(--forest-700);letter-spacing:.06em;font-weight:500}
 </style>
 </head>
 <body>
@@ -207,8 +221,8 @@ header{text-align:center;padding:18px 0 22px;position:relative}
     <div class="mast-sub"><span class="dot" id="connDot"></span><span id="connText">尚未連接試算表</span></div>
     <div class="userbar">
       <span class="ub-label">帳本</span>
-      <select id="userSel" onchange="switchUser(this.value)" aria-label="切換帳本"></select>
-      <button type="button" class="ub-new" onclick="newUser()">＋ 新帳本</button>
+      <span id="userName" class="ub-name">—</span>
+      <button type="button" class="ub-new" onclick="openGate()">切換</button>
     </div>
   </header>
 
@@ -274,6 +288,17 @@ header{text-align:center;padding:18px 0 22px;position:relative}
     </div>
   </details>
 
+</div>
+
+<div class="gate" id="gate" hidden>
+  <div class="gate-card">
+    <div class="mast-en">Daily Ledger</div>
+    <h2 class="gate-title">請輸入名字</h2>
+    <input id="gateInput" type="text" placeholder="你的名字" autocomplete="off" autocapitalize="off"
+           onkeydown="if(event.key==='Enter')submitGate()">
+    <div class="gate-err" id="gateErr"></div>
+    <button class="btn-primary" onclick="submitGate()">進　入</button>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -369,7 +394,7 @@ async function saveConfig(){
   }
   API_URL=url; localStorage.setItem(LS_URL,url); setConn();
   toast('連線中…');
-  try{ await pullRecords(); await flushPending(); await refreshUsers(); toast('連線成功，已同步'); }
+  try{ await pullRecords(); await flushPending(); toast('連線成功，已同步'); }
   catch(e){ toast('已儲存，但讀取失敗，請檢查部署權限',true); }
 }
 async function pullRecords(){
@@ -407,57 +432,44 @@ async function flushPending(){
 }
 
 /* ============================================================
-   使用者（＝頁籤）切換
+   名字登入（綽號 → 頁籤）
    ============================================================ */
-// 本機曾用過的使用者（從 localStorage 的快取 key 推回名單）
-function localUsers(){
-  const out=[];
-  for(let i=0;i<localStorage.length;i++){
-    const k=localStorage.key(i);
-    if(k && k.startsWith(LS_CACHE+'__')) out.push(k.slice((LS_CACHE+'__').length));
-  }
-  return out;
+// 綽號 → 對應的試算表頁籤名。要增刪成員、加綽號，改這張表就好。
+const USER_MAP = {
+  '姐姐':'姊姊', '姊姊':'姊姊', '芊逸':'姊姊', '逸逸':'姊姊',
+  '妹妹':'妹妹', '芊盈':'妹妹', '盈盈':'妹妹',
+  '媽媽':'媽媽', 'yoyo':'媽媽', '茜淅':'媽媽',
+};
+const CANON = new Set(Object.values(USER_MAP));   // 實際頁籤名：姊姊 / 妹妹 / 媽媽
+// 正規化後查表：去頭尾空白、英文不分大小寫
+const _ALIAS = {};
+Object.keys(USER_MAP).forEach(k=>{ _ALIAS[k.trim().toLowerCase()] = USER_MAP[k]; });
+function resolveName(input){ return _ALIAS[(input||'').trim().toLowerCase()] || null; }
+
+function openGate(){
+  const g=document.getElementById('gate');
+  document.getElementById('gateErr').textContent='';
+  document.getElementById('gateInput').value='';
+  g.hidden=false;
+  setTimeout(()=>document.getElementById('gateInput').focus(),60);
 }
-function renderUserSelect(names){
-  const sel=document.getElementById('userSel');
-  const set=new Set([currentUser, ...names]);     // 確保目前使用者一定在清單裡
-  sel.innerHTML='';
-  [...set].forEach(n=>{
-    const o=document.createElement('option');
-    o.value=n; o.textContent=n; if(n===currentUser) o.selected=true;
-    sel.appendChild(o);
-  });
+function submitGate(){
+  const canon=resolveName(document.getElementById('gateInput').value);
+  if(!canon){ document.getElementById('gateErr').textContent='查無此人，請再確認名字'; return; }
+  enterAs(canon);
 }
-// 連線時向後端要現有頁籤清單；離線就用本機名單
-async function refreshUsers(){
-  let names=localUsers();
-  if(API_URL){
-    try{
-      const res=await fetch(API_URL+'?list=users',{method:'GET'});
-      const data=await res.json();
-      if(data && data.ok && Array.isArray(data.users)) names=data.users;
-    }catch(e){/* 離線就用本機名單 */}
-  }
-  renderUserSelect(names);
-}
-async function switchUser(name){
-  name=(name||'').trim(); if(!name || name===currentUser){ return; }
+// 以某個頁籤身分進入：載入本機快取、補編號、連線同步
+function enterAs(name){
   currentUser=name; localStorage.setItem(LS_USER,name);
-  loadUserData();                 // 換成這位使用者的本機快取
-  cancelEdit();
-  setConn(); renderUserSelect(localUsers());
-  refreshIfOpen();
-  if(API_URL){ try{ await pullRecords(); await flushPending(); }catch(e){} }
-  toast('已切換到「'+name+'」');
-}
-function newUser(){
-  const name=prompt('新帳本名稱（會在試算表建立一個同名頁籤）：','');
-  if(name===null) return;
-  const n=name.trim();
-  if(!n){ toast('名稱不可空白',true); return; }
-  if(/[:\\\/\?\*\[\]]/.test(n)){ toast('名稱不可含 : \\ / ? * [ ]',true); return; }
-  if(n.length>50){ toast('名稱太長',true); return; }
-  switchUser(n);   // 切過去；第一次讀寫時後端會自動複製 SAMPLE 建立頁籤
+  document.getElementById('userName').textContent=name;
+  document.getElementById('gate').hidden=true;
+  loadUserData();
+  let changed=false;
+  records.forEach(r=>{ if(!r.id){ r.id=genId(); changed=true; } });
+  if(changed) saveCache();
+  cancelEdit(); setConn(); refreshIfOpen();
+  if(API_URL){ pullRecords().then(flushPending).catch(()=>{}); }
+  toast('進入「'+name+'」帳本');
 }
 
 async function saveEntry(){
@@ -642,22 +654,11 @@ function escapeHTML(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&
 (function init(){
   document.getElementById('date').value=todayStr();
   document.getElementById('apiUrl').value=API_URL;
-  // 舊版單一帳本的快取（無使用者後綴）→ 搬到預設使用者底下，避免資料看似消失
-  const legacy=localStorage.getItem(LS_CACHE);
-  if(legacy && !localStorage.getItem(LS_CACHE+'__'+DEFAULT_USER)){
-    localStorage.setItem(LS_CACHE+'__'+DEFAULT_USER, legacy);
-    localStorage.removeItem(LS_CACHE);
-    const legacyPD=localStorage.getItem(LS_PENDING_DEL);
-    if(legacyPD){ localStorage.setItem(LS_PENDING_DEL+'__'+DEFAULT_USER, legacyPD); localStorage.removeItem(LS_PENDING_DEL); }
-  }
-  loadUserData();
-  // 為升級前沒有編號的舊紀錄補上編號
-  let changed=false;
-  records.forEach(r=>{ if(!r.id){ r.id=genId(); changed=true; } });
-  if(changed) saveCache();
-  renderUserSelect(localUsers());
   setConn(); liveCategory();
-  if(API_URL) pullRecords().then(flushPending).then(refreshUsers).catch(()=>{});
+  // 記住上次是誰：是家庭成員就直接進；否則跳出輸入名字的登入畫面
+  const saved=localStorage.getItem(LS_USER);
+  if(saved && CANON.has(saved)) enterAs(saved);
+  else openGate();
 })();
 </script>
 </body>
