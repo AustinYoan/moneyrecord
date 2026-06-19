@@ -218,7 +218,7 @@ header{text-align:center;padding:18px 0 22px;position:relative}
     <div class="mast-en">Daily Ledger</div>
     <h1 class="mast-cn">帳　簿</h1>
     <hr class="mast-rule">
-    <div class="mast-sub"><span class="dot" id="connDot"></span><span id="connText">尚未連接試算表</span></div>
+    <div class="mast-sub" onclick="toggleSetup()" title="點這裡可重新設定／修改連線" style="cursor:pointer"><span class="dot" id="connDot"></span><span id="connText">尚未連接試算表</span></div>
     <div class="userbar">
       <span class="ub-label">帳本</span>
       <span id="userName" class="ub-name">—</span>
@@ -276,7 +276,7 @@ header{text-align:center;padding:18px 0 22px;position:relative}
   <section class="card" id="output" hidden></section>
 
   <!-- 設定 -->
-  <details class="setup card" style="padding:0;background:transparent;border:0;box-shadow:none">
+  <details class="setup card" id="setup" style="padding:0;background:transparent;border:0;box-shadow:none">
     <summary>⚙ 連接設定 / Apps Script 網址</summary>
     <div class="panel card">
       <div class="field" style="margin-bottom:8px">
@@ -383,6 +383,15 @@ function setConn(){
   if(API_URL){ dot.className='dot ok'; txt.textContent = p ? `已連接 · ${p} 筆待同步` : '已連接 Google 試算表'; }
   else { dot.className='dot off'; txt.textContent = p ? `離線模式 · ${p} 筆暫存本機` : '離線模式（資料暫存本機）'; }
 }
+// 連線設定面板：已連線就收起來、沒連線就顯示。點標頭狀態列可再叫出來修改。
+function applySetupVisibility(){
+  const s=document.getElementById('setup'); if(!s) return;
+  if(API_URL){ s.hidden=true; s.open=false; } else { s.hidden=false; s.open=true; }
+}
+function toggleSetup(){
+  const s=document.getElementById('setup'); if(!s) return;
+  s.hidden=!s.hidden; if(!s.hidden) s.open=true;
+}
 
 /* ============================================================
    資料：讀 / 寫 Google Sheet（Apps Script）
@@ -394,7 +403,7 @@ async function saveConfig(){
   }
   API_URL=url; localStorage.setItem(LS_URL,url); setConn();
   toast('連線中…');
-  try{ await pullRecords(); await flushPending(); toast('連線成功，已同步'); }
+  try{ await pullRecords(); await flushPending(); applySetupVisibility(); toast('連線成功，已同步'); }
   catch(e){ toast('已儲存，但讀取失敗，請檢查部署權限',true); }
 }
 async function pullRecords(){
@@ -654,7 +663,7 @@ function escapeHTML(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&
 (function init(){
   document.getElementById('date').value=todayStr();
   document.getElementById('apiUrl').value=API_URL;
-  setConn(); liveCategory();
+  setConn(); liveCategory(); applySetupVisibility();
   // 記住上次是誰：是家庭成員就直接進；否則跳出輸入名字的登入畫面
   const saved=localStorage.getItem(LS_USER);
   if(saved && CANON.has(saved)) enterAs(saved);
